@@ -2,6 +2,7 @@ GraphTsetlinMachine-master/*
 data/*
 !data/.gitkeep
 
+dataset/*
 env/*
 
 graphs/*
