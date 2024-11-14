@@ -66,7 +66,7 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 from PIL import Image
 
-
+torch.cuda.empty_cache()
 class CXR8Dataset(Dataset):
     def __init__(self, data, data_dir, transform=None):
         super().__init__()
@@ -81,6 +81,7 @@ class CXR8Dataset(Dataset):
         img_name = self.data.iloc[index, 0]
         img_path = os.path.join(self.data_dir, img_name)
         image = Image.open(img_path).convert('RGB')
+      
 
         if self.transform is not None:
             image = self.transform(image)
@@ -91,22 +92,30 @@ class CXR8Dataset(Dataset):
         return image, label
 # create a transform
 
+mean = [0.485, 0.456, 0.406]
+std = [0.229, 0.224, 0.225]
+
 train_transform = transforms.Compose([
     #transforms.ToPILImage(),
- #   transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
-    transforms.Resize((224, 224)),
+   # transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
+ #   transforms.Resize((224, 224)),
     transforms.RandomHorizontalFlip(),
-    transforms.RandomVerticalFlip(),
-    transforms.RandomRotation(20),
-    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
-    transforms.ToTensor()
+  #  transforms.RandomVerticalFlip(),
+    transforms.RandomRotation(15),
+    transforms.Resize(256),
+    transforms.CenterCrop(256),
+  #  transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+    transforms.ToTensor(),
+    transforms.Normalize(mean, std)
 ])
 
 val_transform = transforms.Compose([
     #transforms.ToPILImage(),
-  #  transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
-    transforms.Resize((224, 224)),
-    transforms.ToTensor()
+    #transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
+    transforms.Resize(256),
+    transforms.CenterCrop(256),
+    transforms.ToTensor(),
+    transforms.Normalize(mean, std)
 ])
 
 if __name__ == '__main__':
@@ -123,10 +132,11 @@ if __name__ == '__main__':
     # create a dataloader
     train_loader = DataLoader(
         train_dataset,
-        batch_size=64,
+        batch_size=48,
         shuffle=True,
         num_workers=10,  # Run single-threaded to identify issues
-        pin_memory=True
+        pin_memory=True,
+        prefetch_factor=12
     )
 
     val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
@@ -134,18 +144,19 @@ if __name__ == '__main__':
 
 
     import torchvision.models as models 
+    import torchvision.transforms as transforms
     from torchvision.models.resnet import ResNet, BasicBlock
     from torchvision.models.resnet import ResNet50_Weights
-    model = models.resnet50(weights=ResNet50_Weights.IMAGENET1K_V2)
+    from torchvision.models.densenet import DenseNet, densenet121, DenseNet121_Weights
+    params={'lr': 6.190299247040861e-05, 'hidden_size1': 922, 'hidden_size2': 963, 'dropout': 0.15031043177950457}
+    model = models.densenet121(weights=DenseNet121_Weights.DEFAULT)
 
-    model.fc = nn.Sequential(
-        nn.Linear(2048, 1024),
-        nn.ReLU(),
-        nn.Dropout(0.2),
-        nn.Linear(1024, 512),
-        nn.ReLU(),
-        nn.Dropout(0.2),
-        nn.Linear(512, 14)
+    #model.conv1 = nn.Conv2d(1, model.conv1.out_channels, kernel_size=model.conv1.kernel_size, stride=model.conv1.stride, padding=model.conv1.padding, bias=model.conv1.bias)
+    #model.features.conv0 = nn.Conv2d(1, model.features.conv0.out_channels, kernel_size=model.features.conv0.kernel_size, stride=model.features.conv0.stride, padding=model.features.conv0.padding, bias=model.features.conv0.bias)
+
+    model.classifier = nn.Sequential(
+        nn.Linear(model.classifier.in_features, 14),
+       
     )
 
 
@@ -153,14 +164,17 @@ if __name__ == '__main__':
     for param in model.parameters():
         param.requires_grad = False
 
-    for param in model.fc.parameters():
+    for param in model.classifier.parameters():
         param.requires_grad = True
+    
+
+    
     # define the loss and optimizer
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=0.5e-3)
 
     # train the model
-    num_epochs = 10
+    num_epochs = 45
     train_losses = []
     val_losses = []
 
@@ -185,7 +199,7 @@ if __name__ == '__main__':
 
 
             
-        
+           
             optimizer.zero_grad()
             output = model(images)
         
@@ -224,7 +238,7 @@ if __name__ == '__main__':
     predictions = np.array(predictions)
     actuals = np.array(actuals)
 
-    predictions = np.where(predictions > 0.5, 1, 0)
+    predictions = np.where(predictions > 0.2, 1, 0)
 
     accuracy = accuracy_score(actuals, predictions)
     recall = recall_score(actuals, predictions, average='micro')
@@ -247,6 +261,10 @@ if __name__ == '__main__':
     roc_auc_score(actuals, predictions)
 
     print('ROC AUC Score:', roc_auc_score(actuals, predictions))
+
+    # save the model
+    torch.save(model.state_dict(), 'model.pth')
+    
 
 
 
