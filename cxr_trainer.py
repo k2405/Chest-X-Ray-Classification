@@ -31,6 +31,9 @@ use_amp = True
 scaler = torch.amp.GradScaler(enabled=use_amp)
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
+user = os.getenv("USER") 
+if user == "jon":
+    script_dir = "/mnt/b/Xray"
 
 # Argument parser for user inputs
 parser = argparse.ArgumentParser(description="Train a Chest X-ray model.")

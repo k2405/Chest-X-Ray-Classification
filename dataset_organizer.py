@@ -5,6 +5,9 @@ import shutil
 from concurrent.futures import ThreadPoolExecutor
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
+user = os.getenv("USER") 
+if user == "jon":
+    script_dir = "/mnt/b/Xray"
 
 # Define paths (adjusted for WSL compatibility with Windows paths)
 project_dir = os.path.join(script_dir, "dataset")
