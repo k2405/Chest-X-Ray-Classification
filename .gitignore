@@ -2,6 +2,9 @@ GraphTsetlinMachine-master/*
 data/*
 !data/.gitkeep
 
+train_cache/*
+val_cache/*
+
 dataset/*
 env/*
 
