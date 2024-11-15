@@ -30,16 +30,19 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 use_amp = True
 scaler = torch.amp.GradScaler(enabled=use_amp)
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
 # Argument parser for user inputs
 parser = argparse.ArgumentParser(description="Train a Chest X-ray model.")
-parser.add_argument("--train_dir", type=str, default="/mnt/b/Xray/data/train", help="Path to training data. (default: /mnt/b/Xray/data/train)")
-parser.add_argument("--test_dir", type=str, default="/mnt/b/Xray/data/test", help="Path to test data. (default: /mnt/b/Xray/data/test)")
-parser.add_argument("--label_file", type=str, default="/mnt/b/Xray/Data_Entry_2017_v2020.csv", help="Path to label file. (default: /mnt/b/Xray/Data_Entry_2017_v2020.csv)")
+parser.add_argument("--train_dir", type=str, default=f"{script_dir}/dataset/data/train", help="Path to training data. ")
+parser.add_argument("--test_dir", type=str, default=f"{script_dir}/dataset/data/test", help="Path to test data. ")
+parser.add_argument("--label_file", type=str, default=f"{script_dir}/Data_Entry_2017_v2020.csv", help="Path to label file. ")
 parser.add_argument("--cache_dir", type=str, default="cache", help="Directory for caching. (default: 'cache')")
-parser.add_argument("--models_dir", type=str, default="/mnt/b/Xray/models", help="Directory for saving models. (default: /mnt/b/Xray/models)")
+parser.add_argument("--models_dir", type=str, default=f"{script_dir}/models", help="Directory for saving models. ")
 parser.add_argument("--batch_size", type=int, default=128, help="Batch size. (default: 128)")
-parser.add_argument("--num_workers", type=int, default=max(1, os.cpu_count() - 2), help="Number of parallel workers. (default: CPU cores - 2)")
-parser.add_argument("--enable_cache", action="store_true", help="Enable caching.")
+parser.add_argument("--num_workers", type=int, default=max(1, os.cpu_count() // 2), help="Number of parallel workers. (default: CPU cores // 2)")
+parser.add_argument("--disable_cache", action="store_true", help="Disable caching. (default: False, caching is enabled by default)")
+parser.add_argument("--rebuild_cache", action="store_true", help="Force cache rebuilding. (default: False)")
 parser.add_argument("--num_train_images", type=int, default=None, help="Number of training images to load. Set to None to load all images. (default: None)")
 parser.add_argument("--num_test_images", type=int, default=None, help="Number of test images to load. Set to None to load all images. (default: None)")
 parser.add_argument("--checkpoint_interval", type=int, default=5, help="Save model checkpoints every N epochs. (default: 5)")
@@ -54,16 +57,6 @@ def batch_iterable(iterable, batch_size):
         if not batch:
             break
         yield batch
-
-def compute_hash(dataset, transform):
-    """
-    Compute a hash based on the dataset and transform parameters.
-    """
-    # Serialize dataset file paths and transformation parameters
-    dataset_info = [path for _, path in dataset]
-    transform_info = str(transform)  # Transform object serialized as string
-    hash_input = json.dumps({'dataset': dataset_info, 'transform': transform_info}, sort_keys=True)
-    return hashlib.sha256(hash_input.encode()).hexdigest()
 
 def preprocess_and_save(dataset, transform, cache_dir="cache", num_workers=4, batch_size=32, enable_cache=True, rebuild_cache=False):
     """
@@ -88,38 +81,28 @@ def preprocess_and_save(dataset, transform, cache_dir="cache", num_workers=4, ba
     if enable_cache:
         os.makedirs(cache_dir, exist_ok=True)
 
-    current_hash = compute_hash(dataset, transform) if enable_cache else None
-    hash_file = os.path.join(cache_dir, "hash.txt") if enable_cache else None
-
-    cache_invalid = rebuild_cache  # User override
-    if enable_cache and not rebuild_cache:
-        if os.path.exists(hash_file):
-            with open(hash_file, 'r') as f:
-                cached_hash = f.read().strip()
-            if cached_hash != current_hash:
-                print("Cache invalidated: Dataset or transforms have changed.")
-                cache_invalid = True
-        else:
-            print("Cache missing hash file; rebuilding.")
-            cache_invalid = True
-
-    # Write new hash if cache is rebuilt
-    if cache_invalid and enable_cache:
-        with open(hash_file, 'w') as f:
-            f.write(current_hash)
+        # Clear cache directory if rebuilding
+        if rebuild_cache:
+            print(f"Rebuilding cache. Clearing directory: {cache_dir}")
+            for file in os.listdir(cache_dir):
+                file_path = os.path.join(cache_dir, file)
+                os.remove(file_path)
 
     def process_batch(batch):
         results = []
         for patient_id, image_path in batch:
             cache_path = os.path.join(cache_dir, f"{os.path.basename(image_path)}.pt") if enable_cache else None
-            if not enable_cache or cache_invalid or (enable_cache and not os.path.exists(cache_path)):
+            if not enable_cache or rebuild_cache or (enable_cache and not os.path.exists(cache_path)):
                 try:
                     image = Image.open(image_path).convert("RGB")
                     image = transform(image)
                     if enable_cache:
                         torch.save(image, cache_path)
+                        print(f"Cached: {cache_path}")
                 except Exception as e:
                     print(f"Error processing {image_path}: {e}")
+            else:
+                print(f"Using cached file: {cache_path}")
             results.append((patient_id, cache_path if enable_cache else image))
         return results
 
@@ -383,7 +366,8 @@ if __name__ == "__main__":
     models_dir = args.models_dir
     batch_size = args.batch_size
     num_workers = args.num_workers
-    enable_cache = args.enable_cache
+    enable_cache = not args.disable_cache  # Cache is enabled by default unless explicitly disabled
+    rebuild_cache = args.rebuild_cache
     num_train_images = args.num_train_images
     num_test_images = args.num_test_images
     checkpoint_interval = args.checkpoint_interval
@@ -418,20 +402,18 @@ if __name__ == "__main__":
         train_subset,
         transform=data_transforms["train"],
         cache_dir="train_cache",
-        num_workers=num_workers,
         batch_size=batch_size,
-        enable_cache=True,
-        rebuild_cache=False  # Use existing cache unless transforms/dataset change
+        enable_cache=enable_cache,
+        rebuild_cache=rebuild_cache 
     )
 
     val_dataset = preprocess_and_save(
         val_subset,
         transform=data_transforms["val"],
         cache_dir="val_cache",
-        num_workers=num_workers,
         batch_size=batch_size,
-        enable_cache=True,
-        rebuild_cache=False
+        enable_cache=enable_cache,
+        rebuild_cache=rebuild_cache 
     )
 
     train_loader = DataLoader(
