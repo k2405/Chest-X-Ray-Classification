@@ -36,7 +36,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 parser = argparse.ArgumentParser(description="Train a Chest X-ray model.")
 parser.add_argument("--train_dir", type=str, default=f"{script_dir}/dataset/data/train", help="Path to training data. ")
 parser.add_argument("--test_dir", type=str, default=f"{script_dir}/dataset/data/test", help="Path to test data. ")
-parser.add_argument("--label_file", type=str, default=f"{script_dir}/Data_Entry_2017_v2020.csv", help="Path to label file. ")
+parser.add_argument("--label_file", type=str, default=f"{script_dir}/dataset/Data_Entry_2017_v2020.csv", help="Path to label file. ")
 parser.add_argument("--cache_dir", type=str, default="cache", help="Directory for caching. (default: 'cache')")
 parser.add_argument("--models_dir", type=str, default=f"{script_dir}/models", help="Directory for saving models. ")
 parser.add_argument("--batch_size", type=int, default=128, help="Batch size. (default: 128)")
@@ -98,11 +98,8 @@ def preprocess_and_save(dataset, transform, cache_dir="cache", num_workers=4, ba
                     image = transform(image)
                     if enable_cache:
                         torch.save(image, cache_path)
-                        print(f"Cached: {cache_path}")
                 except Exception as e:
                     print(f"Error processing {image_path}: {e}")
-            else:
-                print(f"Using cached file: {cache_path}")
             results.append((patient_id, cache_path if enable_cache else image))
         return results
 

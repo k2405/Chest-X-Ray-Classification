@@ -4,8 +4,10 @@ import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor
 
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
 # Define paths (adjusted for WSL compatibility with Windows paths)
-project_dir = "/mnt/b/Xray/"
+project_dir = os.path.join(script_dir, "dataset")
 images_dir = os.path.join(project_dir, "images", "images")
 train_list_path = os.path.join(project_dir, "train_val_list.txt")
 test_list_path = os.path.join(project_dir, "test_list.txt")
