@@ -126,7 +126,7 @@ if __name__ == '__main__':
     # place the images in train_images in the train set and the images in test_images in the test set
     train_val_data = data[data['Image Index'].isin(train_images[0].values)]
     test_data = data[data['Image Index'].isin(test_images[0].values)]
-    train_data, val_data = train_test_split(train_val_data, test_size=0.2, random_state=42)
+    train_data, val_data = train_test_split(train_val_data, test_size=0.2)
 
 
 
@@ -233,7 +233,7 @@ if __name__ == '__main__':
 
         # define the loss and optimizer
         criterion = nn.BCEWithLogitsLoss()
-        optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=1e-4)
+        optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=0)
             # train the model
         num_epochs = 10
         train_losses = []

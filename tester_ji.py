@@ -132,11 +132,11 @@ if __name__ == '__main__':
     # create a dataloader
     train_loader = DataLoader(
         train_dataset,
-        batch_size=48,
+        batch_size=32,
         shuffle=True,
         num_workers=10,  # Run single-threaded to identify issues
-        pin_memory=True,
-        prefetch_factor=12
+        pin_memory=True
+      
     )
 
     val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
@@ -161,17 +161,17 @@ if __name__ == '__main__':
 
 
 
+
     for param in model.parameters():
         param.requires_grad = False
-
+    
     for param in model.classifier.parameters():
         param.requires_grad = True
     
-
     
     # define the loss and optimizer
     criterion = nn.BCEWithLogitsLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.5e-3)
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=0.5e-3)
 
     # train the model
     num_epochs = 45
@@ -210,14 +210,20 @@ if __name__ == '__main__':
         
             
         model.eval()
-        for images, labels in val_loader:
-            images, labels = images.to(device), labels.to(device)
-            output = model(images)
-            loss = criterion(output, labels.float())
-            val_loss += loss.item()
+        with torch.no_grad():
+            for images, labels in val_loader:
+                images, labels = images.to(device), labels.to(device)
+                output = model(images)
+                loss = criterion(output, labels.float())
+                val_loss += loss.item()
             
         train_losses.append(train_loss/len(train_loader))
+
+        
         val_losses.append(val_loss/len(val_loader))
+        if val_loss/len(val_loader) == min(val_losses):
+            torch.save(model.state_dict(), 'model.pth')
+
 
         
         print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss/len(train_loader)}, Val Loss: {val_loss/len(val_loader)}')
