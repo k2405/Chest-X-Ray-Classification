@@ -149,8 +149,7 @@ if __name__ == '__main__':
     batch_size = 47
     grad_clip = 0.9058269880647503
     scheduler_name = "None"
-    random_rotation = set_params['random_rotation']
-    collor_jitter = set_params['collor_jitter']
+   
   
 
 
@@ -162,8 +161,8 @@ if __name__ == '__main__':
   #  transforms.RandomVerticalFlip(),
     transforms.RandomRotation(15),
     transforms.Resize(256),
-    transforms.CenterCrop(256),
-  #  transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
+    transforms.CenterCrop(224),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
     transforms.ToTensor(),
     transforms.Normalize(mean, std)
     ])
@@ -172,7 +171,7 @@ if __name__ == '__main__':
         #transforms.ToPILImage(),
         #transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
         transforms.Resize(256),
-        transforms.CenterCrop(256),
+        transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize(mean, std)
     ])
@@ -234,14 +233,12 @@ if __name__ == '__main__':
 
         # define the loss and optimizer
         criterion = nn.BCEWithLogitsLoss()
-        optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr)
+        optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=1e-4)
             # train the model
-        num_epochs = 18
+        num_epochs = 10
         train_losses = []
         val_losses = []
 
-        scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=set_params['T_max'], 
-                                                            eta_min=set_params['eta_min'])
 
 
 
@@ -276,12 +273,7 @@ if __name__ == '__main__':
                     torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
                 optimizer.step()
 
-                if scheduler_name == 'ReduceLROnPlateau':
-                    scheduler.step(val_loss)
-                elif scheduler_name == 'None':
-                    pass
-                else:
-                    scheduler.step()
+               
             
                 train_loss += loss.item()
             
