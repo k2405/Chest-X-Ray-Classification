@@ -126,7 +126,7 @@ if __name__ == '__main__':
     # place the images in train_images in the train set and the images in test_images in the test set
     train_val_data = data[data['Image Index'].isin(train_images[0].values)]
     test_data = data[data['Image Index'].isin(test_images[0].values)]
-    train_data, val_data = train_test_split(train_val_data, test_size=0.2)
+    train_data, val_data = train_test_split(train_val_data, test_size=0.2, random_state=42)
 
 
 
@@ -395,20 +395,20 @@ if __name__ == '__main__':
     
     # print the results
 
-    print('Effusion mean:', np.mean(Effusion_results), 'Effusion std:', np.std(Effusion_results))
-    print('Fibrosis mean:', np.mean(Fibrosis_results), 'Fibrosis std:', np.std(Fibrosis_results))
-    print('Nodule mean:', np.mean(Nodule_results), 'Nodule std:', np.std(Nodule_results))
-    print('Edema mean:', np.mean(Edema_results), 'Edema std:', np.std(Edema_results))
-    print('Mass mean:', np.mean(Mass_results), 'Mass std:', np.std(Mass_results))
-    print('Pleural_Thickening mean:', np.mean(Pleural_Thickening_results), 'Pleural_Thickening std:', np.std(Pleural_Thickening_results))
-    print('Hernia mean:', np.mean(Hernia_results), 'Hernia std:', np.std(Hernia_results))
     print('Atelectasis mean:', np.mean(Atelectasis_results), 'Atelectasis std:', np.std(Atelectasis_results))
-    print('Consolidation mean:', np.mean(Consolidation_results), 'Consolidation std:', np.std(Consolidation_results))
-    print('Pneumonia mean:', np.mean(Pneumonia_results), 'Pneumonia std:', np.std(Pneumonia_results))
-    print('Infiltration mean:', np.mean(Infiltration_results), 'Infiltration std:', np.std(Infiltration_results))
-    print('Emphysema mean:', np.mean(Emphysema_results), 'Emphysema std:', np.std(Emphysema_results))
-    print('Pneumothorax mean:', np.mean(Pneumothorax_results), 'Pneumothorax std:', np.std(Pneumothorax_results))
     print('Cardiomegaly mean:', np.mean(Cardiomegaly_results), 'Cardiomegaly std:', np.std(Cardiomegaly_results))
+    print('Consolidation mean:', np.mean(Consolidation_results), 'Consolidation std:', np.std(Consolidation_results))
+    print('Edema mean:', np.mean(Edema_results), 'Edema std:', np.std(Edema_results))
+    print('Effusion mean:', np.mean(Effusion_results), 'Effusion std:', np.std(Effusion_results))
+    print('Emphysema mean:', np.mean(Emphysema_results), 'Emphysema std:', np.std(Emphysema_results))
+    print('Fibrosis mean:', np.mean(Fibrosis_results), 'Fibrosis std:', np.std(Fibrosis_results))
+    print('Hernia mean:', np.mean(Hernia_results), 'Hernia std:', np.std(Hernia_results))
+    print('Infiltration mean:', np.mean(Infiltration_results), 'Infiltration std:', np.std(Infiltration_results))
+    print('Mass mean:', np.mean(Mass_results), 'Mass std:', np.std(Mass_results))
+    print('Nodule mean:', np.mean(Nodule_results), 'Nodule std:', np.std(Nodule_results))
+    print('Pleural_Thickening mean:', np.mean(Pleural_Thickening_results), 'Pleural_Thickening std:', np.std(Pleural_Thickening_results))
+    print('Pneumonia mean:', np.mean(Pneumonia_results), 'Pneumonia std:', np.std(Pneumonia_results))
+    print('Pneumothorax mean:', np.mean(Pneumothorax_results), 'Pneumothorax std:', np.std(Pneumothorax_results))
 
 
 
