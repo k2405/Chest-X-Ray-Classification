@@ -12,7 +12,7 @@ from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_sc
 from torch.utils.data import DataLoader
 from torchvision import transforms, models
 from torchvision.models import resnet152, ResNet152_Weights
-from torchvision.models.densenet import DenseNet121_Weights
+from torchvision.models.densenet import densenet121, DenseNet121_Weights
 from sklearn.model_selection import train_test_split
 from collections import defaultdict
 from PIL import Image
@@ -240,13 +240,17 @@ def get_data_transforms(image_size=224):
 
 # Model Preparation
 def prepare_model():
-    model = resnet152(weights=ResNet152_Weights.DEFAULT)
-    model.fc = nn.Sequential(
-        nn.Linear(model.fc.in_features, 14),
-    )
+    #model = resnet152(weights=ResNet152_Weights.DEFAULT)
+    model = densenet121(weights=DenseNet121_Weights.DEFAULT)
+    # model.fc = nn.Sequential(
+    #     nn.Linear(model.fc.in_features, 14),
+    # )
+    model.classifier = nn.Linear(model.classifier.in_features, 14)
     for param in model.parameters():
         param.requires_grad = False
-    for param in model.fc.parameters():
+    # for param in model.fc.parameters():
+    #     param.requires_grad = True
+    for param in model.classifier.parameters():
         param.requires_grad = True
     return model
 
@@ -335,6 +339,17 @@ def evaluate_model(model, val_loader, threshold=0.2, target_names=None):
     predictions = np.array(predictions)
     actuals = np.array(actuals)
 
+    # Calculate AUC for each label
+    auc_scores = []
+    for i in range(len(target_names)):
+        if np.sum(actuals[:, i]) == 0 or np.sum(actuals[:, i]) == len(actuals):
+            print(f"Skipping AUC calculation for {target_names[i]} (only one class present in labels).")
+            auc_scores.append(None)
+        else:
+            auc = roc_auc_score(actuals[:, i], predictions[:, i])
+            auc_scores.append(auc)
+            print(f"{target_names[i]}: AUC = {auc:.4f}")
+
     # Apply threshold
     binary_predictions = (predictions > threshold).astype(int)
 
@@ -356,6 +371,46 @@ def evaluate_model(model, val_loader, threshold=0.2, target_names=None):
 
     auc_score = roc_auc_score(actuals, predictions, average="micro")
     print(f'ROC AUC Score: {auc_score}')
+
+    valid_auc_scores = [auc for auc in auc_scores if auc is not None]
+    if valid_auc_scores:
+        avg_auc = np.mean(valid_auc_scores)
+        print(f"\nAverage AUC (excluding skipped labels): {avg_auc:.4f}")
+
+# Test
+def test_model(model, test_loader, threshold=0.2, target_names=None):
+    model.eval()
+
+    predictions, actuals = [], []
+    with torch.no_grad():
+        for batch in test_loader:
+            images, labels = batch['img'].to(device), batch['lab'].to(device)
+            outputs = torch.sigmoid(model(images))
+            predictions.extend(outputs.cpu().numpy())
+            actuals.extend(labels.cpu().numpy())
+
+    predictions = np.array(predictions)
+    actuals = np.array(actuals)
+
+    # Calculate AUC for each label
+    auc_scores = []
+    for i in range(len(target_names)):
+        if np.sum(actuals[:, i]) == 0 or np.sum(actuals[:, i]) == len(actuals):
+            print(f"Skipping AUC calculation for {target_names[i]} (only one class present in labels).")
+            auc_scores.append(None)
+        else:
+            auc = roc_auc_score(actuals[:, i], predictions[:, i])
+            auc_scores.append(auc)
+            print(f"{target_names[i]}: AUC = {auc:.4f}")
+
+    valid_auc_scores = [auc for auc in auc_scores if auc is not None]
+    if valid_auc_scores:
+        avg_auc = np.mean(valid_auc_scores)
+        print(f"\nAverage AUC (excluding skipped labels): {avg_auc:.4f}")
+
+    
+
+    
 
 # Main Workflow
 if __name__ == "__main__":
@@ -385,9 +440,9 @@ if __name__ == "__main__":
     print(f"Checkpoint Interval: {checkpoint_interval}")
 
 
-    common_pathologies = ["Infiltration", "Effusion", "Atelectasis", "Nodule",
-                        "Mass", "Pneumothorax", "Consolidation", "Pleural_Thickening",
-                        "Cardiomegaly", "Emphysema", "Edema", "Fibrosis", "Pneumonia", "Hernia"]
+    common_pathologies = ["Atelectasis", "Cardiomegaly", "Consolidation", "Edema", "Effusion", 
+                          "Emphysema", "Fibrosis", "Hernia", "Infiltration", "Mass", 
+                          "Nodule", "Pleural_Thickening", "Pneumonia", "Pneumothorax"]
     label_mapping = load_labels(labels_file, common_pathologies)
 
     data_transforms = get_data_transforms() 
@@ -416,6 +471,15 @@ if __name__ == "__main__":
         rebuild_cache=rebuild_cache 
     )
 
+    test_dataset = preprocess_and_save(
+        test_dataset,
+        transform=data_transforms["val"],
+        cache_dir="test_cache",
+        batch_size=batch_size,
+        enable_cache=enable_cache,
+        rebuild_cache=rebuild_cache 
+    )
+
     train_loader = DataLoader(
         ChestXray14CachedDataset(train_dataset, label_mapping, common_pathologies),
         batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True, prefetch_factor=6, persistent_workers=True
@@ -426,10 +490,16 @@ if __name__ == "__main__":
         batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, prefetch_factor=6, persistent_workers=True
     )
 
+    test_loader = DataLoader(
+        ChestXray14CachedDataset(test_dataset, label_mapping, common_pathologies),
+        batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, prefetch_factor=6, persistent_workers=True
+    )
+
 
     model = prepare_model()
-    model = train_model(model, train_loader, val_loader, num_epochs=15, lr=0.0005)
+    model = train_model(model, train_loader, val_loader, num_epochs=10, lr=0.0005)
     evaluate_model(model, val_loader, threshold=0.2, target_names=common_pathologies)
+    test_model(model, test_loader, threshold=0.2, target_names=common_pathologies)
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     model_filename = f"{models_dir}/model_{timestamp}.pth"
