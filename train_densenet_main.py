@@ -239,6 +239,9 @@ if __name__ == '__main__':
         train_losses = []
         val_losses = []
 
+        patience = 3
+        counter = 0
+
 
 
 
@@ -292,6 +295,13 @@ if __name__ == '__main__':
             
             if val_loss/len(val_loader) == min(val_losses):
                 torch.save(model.state_dict(), 'model.pth')
+                counter = 0
+            
+            counter += 1
+
+            if counter == patience:
+                print(f'Last Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss/len(train_loader)}, Val Loss: {val_loss/len(val_loader)}')  
+                break
 
         
         
