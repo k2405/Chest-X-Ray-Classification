@@ -168,7 +168,7 @@ if __name__ == '__main__':
 
     
     lr = 6.469492224099435e-05
-    batch_size = 47
+    batch_size = 32
     grad_clip = 0.9058269880647503
     scheduler_name = "None"
    
@@ -216,14 +216,14 @@ if __name__ == '__main__':
         
         )
 
-    val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False,num_workers=10, pin_memory=True,
+    val_loader = DataLoader(val_dataset, batch_size=32, shuffle=False,num_workers=10, pin_memory=True,
                                 prefetch_factor=2 
                             
                             )
         
 
         
-    test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False,num_workers=10, pin_memory=True,
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False,num_workers=10, pin_memory=True,
                                 prefetch_factor=2)
 
     Effusion_results = []
@@ -392,7 +392,7 @@ if __name__ == '__main__':
         test_roc_auc_scores = []
         for i,j in zip(range(len(all_labels_without_no_finding)),all_labels_without_no_finding):
             test_predictions = test_predictions2.copy()
-            test_predictions = np.where(test_predictions > best_thresholds[i], 1, 0)
+          #  test_predictions = np.where(test_predictions > best_thresholds[i], 1, 0)
             roc_auc = roc_auc_score(test_actuals[:, i], test_predictions[:, i])
             test_roc_auc_scores.append([roc_auc, all_labels_without_no_finding[i]])
 
