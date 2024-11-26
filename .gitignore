@@ -4,6 +4,10 @@ data/*
 
 train_cache/*
 val_cache/*
+test_cache/*
+
+locks/*
+.lock
 
 dataset/*
 env/*
