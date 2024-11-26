@@ -126,7 +126,29 @@ if __name__ == '__main__':
     # place the images in train_images in the train set and the images in test_images in the test set
     train_val_data = data[data['Image Index'].isin(train_images[0].values)]
     test_data = data[data['Image Index'].isin(test_images[0].values)]
-    train_data, val_data = train_test_split(train_val_data, test_size=0.2, random_state=42)
+
+    patients_ids = pd.read_csv('CXR8/Data_Entry_2017_v2020.csv')
+    patients_ids = patients_ids[['Image Index', 'Patient ID']]
+
+    train_val_data = pd.merge(train_val_data, patients_ids, on='Image Index')
+
+
+
+    unique_patient_ids = train_val_data['Patient ID'].unique()
+
+    # Split patient IDs into training and validation sets
+    train_patient_ids, val_patient_ids = train_test_split(
+        unique_patient_ids, 
+        test_size=0.1, 
+        random_state=42
+    )
+
+    # Create train and validation data based on the patient ID split
+    train_data = train_val_data[train_val_data['Patient ID'].isin(train_patient_ids)]
+    val_data = train_val_data[train_val_data['Patient ID'].isin(val_patient_ids)]
+
+    train_data = train_data.drop(columns=['Patient ID'])
+    val_data = val_data.drop(columns=['Patient ID'])
 
 
 
@@ -159,9 +181,12 @@ if __name__ == '__main__':
  #   transforms.Resize((224, 224)),
     transforms.RandomHorizontalFlip(),
   #  transforms.RandomVerticalFlip(),
-    transforms.RandomRotation(15),
-    transforms.Resize(256),
-    transforms.CenterCrop(224),
+    transforms.RandomRotation(7),
+    transforms.RandomResizedCrop(
+        size=(224, 224),  # Replace with your desired output dimensions
+        scale=(0.08, 1.0),
+        ratio=(3/4, 4/3)
+    ),
     transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.2),
     transforms.ToTensor(),
     transforms.Normalize(mean, std)
@@ -233,7 +258,7 @@ if __name__ == '__main__':
 
         # define the loss and optimizer
         criterion = nn.BCEWithLogitsLoss()
-        optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=0)
+        optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=0, betas=(0.9, 0.999), eps=1e-08, amsgrad=False)
             # train the model
         num_epochs = 10
         train_losses = []
