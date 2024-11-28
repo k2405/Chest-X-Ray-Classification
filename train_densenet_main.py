@@ -164,13 +164,14 @@ if __name__ == '__main__':
     from torchvision.models.resnet import ResNet50_Weights
     from torchvision.models.densenet import DenseNet, densenet121, DenseNet121_Weights
 
-    set_params = {'lr': 9.434062616975095e-05, 'batch_size': 78, 'grad_clip': 0.9471040785105521, 'random_rotation': 50, 'collor_jitter': 0.3788796875059778, 'scheduler_name': 'CosineAnnealingLR', 'T_max': 29, 'eta_min': 0.00022878922366727737}
-
+    set_params = {'lr': 0.00013334120505282098, 'batch_size': 98, 'grad_clip': 0.47836246526814713, 'scheduler_name': 'CosineAnnealingLR', 'weight_decay': 1.8857522141696178e-06}
     
-    lr = 6.469492224099435e-05
-    batch_size = 32
-    grad_clip = 0.9058269880647503
-    scheduler_name = "None"
+    
+    lr = set_params['lr']
+    batch_size = set_params['batch_size']
+    grad_clip = set_params['grad_clip']
+    scheduler_name = set_params['scheduler_name']
+    weight_decay = set_params['weight_decay']
    
   
 
@@ -242,14 +243,13 @@ if __name__ == '__main__':
     Cardiomegaly_results = []
    
 
-    for i in range(5):
+    for i in range(1):
 
 
 
         model = models.densenet121(weights=DenseNet121_Weights.DEFAULT)
 
-        #model.conv1 = nn.Conv2d(1, model.conv1.out_channels, kernel_size=model.conv1.kernel_size, stride=model.conv1.stride, padding=model.conv1.padding, bias=model.conv1.bias)
-        #model.features.conv0 = nn.Conv2d(1, model.features.conv0.out_channels, kernel_size=model.features.conv0.kernel_size, stride=model.features.conv0.stride, padding=model.features.conv0.padding, bias=model.features.conv0.bias)
+      
 
         model.classifier = nn.Sequential(
             nn.Linear(model.classifier.in_features, 14)
@@ -258,9 +258,13 @@ if __name__ == '__main__':
 
         # define the loss and optimizer
         criterion = nn.BCEWithLogitsLoss()
-        optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=0, betas=(0.9, 0.999), eps=1e-08, amsgrad=False)
+        optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=weight_decay, betas=(0.9, 0.999), eps=1e-08, amsgrad=False)
+
+        if scheduler_name == 'CosineAnnealingLR':
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=0)
+
             # train the model
-        num_epochs = 10
+        num_epochs = 20
         train_losses = []
         val_losses = []
 
@@ -301,6 +305,8 @@ if __name__ == '__main__':
                     torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
                 optimizer.step()
 
+                
+
                
             
                 train_loss += loss.item()
@@ -321,7 +327,7 @@ if __name__ == '__main__':
             if val_loss/len(val_loader) == min(val_losses):
                 torch.save(model.state_dict(), 'model.pth')
                 counter = 0
-            
+            scheduler.step()
             counter += 1
 
             if counter == patience:
@@ -334,7 +340,7 @@ if __name__ == '__main__':
             
             print(f'Epoch {epoch+1}/{num_epochs}, Train Loss: {train_loss/len(train_loader)}, Val Loss: {val_loss/len(val_loader)}')  
         
-        model.load_state_dict(torch.load('model.pth'))
+        model.load_state_dict(torch.load('model.pth', weights_only=False))
 
         model.eval()
         predictions = []
@@ -358,20 +364,6 @@ if __name__ == '__main__':
         roc_auc_scores = []
         best_thresholds = []
 
-        for i in range(len(all_labels_without_no_finding)):
-            
-            best = 0
-            best_threshold = 0
-            for threshold in np.arange(0.001, 1, 0.001):
-                predictions = predictions2.copy()
-                predictions = np.where(predictions > threshold, 1, 0)
-                roc_auc = roc_auc_score(actuals[:, i], predictions[:, i])
-                if roc_auc > best:
-                    best = roc_auc
-                    best_threshold = threshold
-            best_thresholds.append(best_threshold)
-            roc_auc_scores.append([best, all_labels_without_no_finding[i]])
-     
         
         # test tresholds on test set
         test_predictions = []
@@ -429,7 +421,7 @@ if __name__ == '__main__':
 
     
     # print the results
-
+    print('Results:')
     print('Atelectasis mean:', np.mean(Atelectasis_results), 'Atelectasis std:', np.std(Atelectasis_results))
     print('Cardiomegaly mean:', np.mean(Cardiomegaly_results), 'Cardiomegaly std:', np.std(Cardiomegaly_results))
     print('Consolidation mean:', np.mean(Consolidation_results), 'Consolidation std:', np.std(Consolidation_results))
@@ -444,6 +436,9 @@ if __name__ == '__main__':
     print('Pleural_Thickening mean:', np.mean(Pleural_Thickening_results), 'Pleural_Thickening std:', np.std(Pleural_Thickening_results))
     print('Pneumonia mean:', np.mean(Pneumonia_results), 'Pneumonia std:', np.std(Pneumonia_results))
     print('Pneumothorax mean:', np.mean(Pneumothorax_results), 'Pneumothorax std:', np.std(Pneumothorax_results))
+    # print mean and std of the results
+    print('Mean:', np.mean([np.mean(Atelectasis_results), np.mean(Cardiomegaly_results), np.mean(Consolidation_results), np.mean(Edema_results), np.mean(Effusion_results), np.mean(Emphysema_results), np.mean(Fibrosis_results), np.mean(Hernia_results), np.mean(Infiltration_results), np.mean(Mass_results), np.mean(Nodule_results), np.mean(Pleural_Thickening_results), np.mean(Pneumonia_results), np.mean(Pneumothorax_results)]))
+    print('Std:', np.std([np.std(Atelectasis_results), np.std(Cardiomegaly_results), np.std(Consolidation_results), np.std(Edema_results), np.std(Effusion_results), np.std(Emphysema_results), np.std(Fibrosis_results), np.std(Hernia_results), np.std(Infiltration_results), np.std(Mass_results), np.std(Nodule_results), np.std(Pleural_Thickening_results), np.std(Pneumonia_results), np.std(Pneumothorax_results)]))
 
 
 
