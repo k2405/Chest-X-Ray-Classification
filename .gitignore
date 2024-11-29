@@ -7,7 +7,7 @@ val_cache*/*
 test_cache*/*
 
 locks/*
-.lock
+*.lock
 
 dataset/*
 env/*
