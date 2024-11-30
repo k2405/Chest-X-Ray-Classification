@@ -1,54 +1,70 @@
 import os
 from PIL import Image
+from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor
 
-def resize_images(input_dir, output_dir, target_size=(224, 224)):
+def resize_image(file_name, input_dir, output_dir, target_size):
     """
-    Resize all images in a directory to the target size while retaining quality,
-    skipping images that already exist in the output directory.
+    Resizes a single image and saves it to the output directory.
+    """
+    input_path = os.path.join(input_dir, file_name)
+    output_path = os.path.join(output_dir, file_name)
+    
+    # Skip if the output file already exists
+    if os.path.exists(output_path):
+        return False  # Indicate that the image was skipped
 
+    try:
+        with Image.open(input_path) as img:
+            img = img.convert("RGB")
+            img_resized = img.resize(target_size, Image.LANCZOS)
+            os.makedirs(output_dir, exist_ok=True)  # Ensure output directory exists
+            img_resized.save(output_path, format="PNG", optimize=True)
+        return True  # Indicate that the image was successfully resized
+    except Exception as e:
+        print(f"Error processing {file_name}: {e}")
+        return False
+
+def resize_images_parallel(input_dir, output_dir, target_size=(224, 224), max_workers=4):
+    """
+    Resize all .png images in a directory in parallel to the target size, 
+    skipping images that already exist in the output directory.
+    
     Args:
-        input_dir (str): Path to the input directory containing images.
+        input_dir (str): Path to the input directory containing .png images.
         output_dir (str): Path to save the resized images.
         target_size (tuple): Desired size of the output images as (width, height).
+        max_workers (int): Number of threads to use for parallel processing.
     """
     os.makedirs(output_dir, exist_ok=True)
-    
-    # Iterate through all files in the input directory
-    for root, _, files in os.walk(input_dir):
-        for file_name in files:
-            input_path = os.path.join(root, file_name)
+    all_files = [f for f in os.listdir(input_dir) if f.lower().endswith('.png')]
+    total_images = len(all_files)
+
+    # Use tqdm for progress tracking
+    with tqdm(total=total_images, desc="Resizing images", unit="file", dynamic_ncols=True) as pbar:
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            futures = []
+            for file_name in all_files:
+                futures.append(executor.submit(resize_image, file_name, input_dir, output_dir, target_size))
             
-            # Construct the output file path
-            relative_path = os.path.relpath(input_path, input_dir)
-            output_path = os.path.join(output_dir, relative_path)
-            
-            # Skip if the output file already exists
-            if os.path.exists(output_path):
-                print(f"Skipping (already exists): {output_path}")
-                continue
-            
-            # Ensure the file is an image
-            try:
-                with Image.open(input_path) as img:
-                    # Convert to RGB (if not already)
-                    img = img.convert("RGB")
-                    
-                    # Resize the image using high-quality downsampling
-                    img_resized = img.resize(target_size, Image.LANCZOS)
-                    
-                    # Ensure the output directory structure exists
-                    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-                    
-                    # Save the resized image to the output directory
-                    img_resized.save(output_path, format="PNG", optimize=True, exif=img.info.get('exif'))
-                    print(f"Resized and saved: {output_path}")
-            except Exception as e:
-                print(f"Error processing file {input_path}: {e}")
+            # Update progress bar as tasks complete
+            for future in futures:
+                if future.result():  # Only update for successfully processed images
+                    pbar.set_description_str("Resizing images")
+                    pbar.update(1)
+                else:
+                    pbar.set_description_str("Skipped image")
+                    pbar.update(1)
 
 # Example usage
 if __name__ == "__main__":
     input_directory = "/home/jon/projects/Xrays/dataset/data/train"
     output_directory = "/home/jon/projects/Xrays/dataset/data/train_224"
     target_size = (224, 224)
+    max_workers = 5
 
-    resize_images(input_directory, output_directory, target_size)
+    resize_images_parallel(input_directory, output_directory, target_size, max_workers)
+
+    input_directory = "/home/jon/projects/Xrays/dataset/data/test"
+    output_directory = "/home/jon/projects/Xrays/dataset/data/test_224"
+    resize_images_parallel(input_directory, output_directory, target_size, max_workers)
