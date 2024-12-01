@@ -17,9 +17,9 @@ def resize_image(file_name, input_dir, output_dir, target_size):
     try:
         with Image.open(input_path) as img:
             img = img.convert("RGB")
-            img_resized = img.resize(target_size, Image.LANCZOS)
+            img_resized = img.resize(target_size, Image.Resampling.LANCZOS)
             os.makedirs(output_dir, exist_ok=True)  # Ensure output directory exists
-            img_resized.save(output_path, format="PNG", optimize=True)
+            img_resized.save(output_path, format="PNG", optimize=True, icc_profile=None)
         return True  # Indicate that the image was successfully resized
     except Exception as e:
         print(f"Error processing {file_name}: {e}")
@@ -60,12 +60,12 @@ def resize_images_parallel(input_dir, output_dir, target_size=(224, 224), max_wo
 if __name__ == "__main__":
     script_dir = os.getcwd()
     input_directory = f"{script_dir}/dataset/data/train"
-    output_directory = f"{script_dir}/dataset/data/train_224"
-    target_size = (224, 224)
+    output_directory = f"{script_dir}/dataset/data/train_512"
+    target_size = (512, 512)
     max_workers = 5
 
     resize_images_parallel(input_directory, output_directory, target_size, max_workers)
 
     input_directory = f"{script_dir}/dataset/data/test"
-    output_directory = f"{script_dir}/dataset/data/test_224"
+    output_directory = f"{script_dir}/dataset/data/test_512"
     resize_images_parallel(input_directory, output_directory, target_size, max_workers)
