@@ -59,13 +59,23 @@ def resize_images_parallel(input_dir, output_dir, target_size=(224, 224), max_wo
 # Example usage
 if __name__ == "__main__":
     script_dir = os.getcwd()
-    input_directory = f"{script_dir}/dataset/data/train"
-    output_directory = f"{script_dir}/dataset/data/train_512"
-    target_size = (512, 512)
-    max_workers = 5
+    max_workers = max(1, os.cpu_count() // 3)  
 
+
+    image_size = 224
+    target_size = (image_size, image_size)
+    input_directory = f"{script_dir}/dataset/data/train"
+    output_directory = f"{script_dir}/dataset/data/train_{image_size}"
+    resize_images_parallel(input_directory, output_directory, target_size, max_workers)
+    input_directory = f"{script_dir}/dataset/data/test"
+    output_directory = f"{script_dir}/dataset/data/test_{image_size}"
     resize_images_parallel(input_directory, output_directory, target_size, max_workers)
 
+    image_size = 512
+    target_size = (image_size, image_size)
+    input_directory = f"{script_dir}/dataset/data/train"
+    output_directory = f"{script_dir}/dataset/data/train_{image_size}"
+    resize_images_parallel(input_directory, output_directory, target_size, max_workers)
     input_directory = f"{script_dir}/dataset/data/test"
-    output_directory = f"{script_dir}/dataset/data/test_512"
+    output_directory = f"{script_dir}/dataset/data/test_{image_size}"
     resize_images_parallel(input_directory, output_directory, target_size, max_workers)
