@@ -6,14 +6,16 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import confusion_matrix, classification_report, f1_score, accuracy_score,recall_score,precision_score
 from sklearn.model_selection import train_test_split
-
-
+import torchvision.models as models 
+import torchvision.transforms as transforms
+from torchvision.models.resnet import ResNet, BasicBlock
+from torchvision.models.resnet import ResNet50_Weights
+from torchvision.models.densenet import DenseNet, densenet121, DenseNet121_Weights
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
-
 import cv2
 import optuna
 
@@ -123,14 +125,11 @@ def objective(trial):
 
     
     train_transform_random_resize = transforms.Compose([
-    #transforms.ToPILImage(),
-   # transforms.Grayscale(num_output_channels=1),  # Convert to grayscale  
- #   transforms.Resize((224, 224)),
     transforms.RandomHorizontalFlip(),
-  #  transforms.RandomVerticalFlip(),
+ 
     transforms.RandomRotation(7),
     transforms.RandomResizedCrop(
-        size=(224, 224),  # Replace with your desired output dimensions
+        size=(224, 224),  
         scale=(0.08, 1.0),
         ratio=(3/4, 4/3)
     ),
@@ -139,11 +138,7 @@ def objective(trial):
     transforms.Normalize(mean, std)
     ])
 
-   
-    
     val_transform = transforms.Compose([
-        #transforms.ToPILImage(),
-        #transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
         transforms.Resize(256),
         transforms.CenterCrop(224),
         transforms.ToTensor(),
@@ -162,7 +157,7 @@ def objective(trial):
             train_dataset,
             batch_size=batch_size,
             shuffle=True,
-            num_workers=10,  # Run single-threaded to identify issues
+            num_workers=10,  
             pin_memory=True
         
         )
@@ -175,7 +170,7 @@ def objective(trial):
     
 
     
-                # train the model
+    # train the model
     num_epochs = 20
     train_losses = []
     val_losses = []
@@ -185,12 +180,12 @@ def objective(trial):
 
 
 
-    model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
+    model = models.densenet121(weights=DenseNet121_Weights.DEFAULT)
 
       
 
-    model.fc = nn.Sequential(
-            nn.Linear(model.fc.in_features, 14)
+    model.classifier = nn.Sequential(
+            nn.Linear(model.classifier.in_features, 14)
     
         )
 
@@ -211,14 +206,6 @@ def objective(trial):
         scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.1, last_epoch=-1)
     else:
         scheduler = None
-
-    
-
-
-
-
-
-
 
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -339,15 +326,10 @@ if __name__ == '__main__':
 
 
 
- # {'lr': 0.00023482487485532925, 'batch_size': 42, 'grad_clip': 0.9708376786312394, 'scheduler_name': 'CosineAnnealingLR', 'weight_decay': 1.3256975652620102e-05}
   
 
 
-    import torchvision.models as models 
-    import torchvision.transforms as transforms
-    from torchvision.models.resnet import ResNet, BasicBlock
-    from torchvision.models.resnet import ResNet50_Weights
-    from torchvision.models.densenet import DenseNet, densenet121, DenseNet121_Weights
+
 
 
   
