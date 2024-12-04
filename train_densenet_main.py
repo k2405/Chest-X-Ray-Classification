@@ -104,7 +104,7 @@ class CXR8Dataset(Dataset):
         label = torch.tensor(label, dtype=torch.float32)
 
         return img, label
-# create a transform
+
 
 mean = [0.485, 0.456, 0.406]
 std = [0.229, 0.224, 0.225]
@@ -123,7 +123,7 @@ std = [0.229, 0.224, 0.225]
 
 if __name__ == '__main__':
 
-    # place the images in train_images in the train set and the images in test_images in the test set
+
     train_val_data = data[data['Image Index'].isin(train_images[0].values)]
     test_data = data[data['Image Index'].isin(test_images[0].values)]
 
@@ -136,14 +136,13 @@ if __name__ == '__main__':
 
     unique_patient_ids = train_val_data['Patient ID'].unique()
 
-    # Split patient IDs into training and validation sets
+ 
     train_patient_ids, val_patient_ids = train_test_split(
         unique_patient_ids, 
         test_size=0.1, 
         random_state=42
     )
 
-    # Create train and validation data based on the patient ID split
     train_data = train_val_data[train_val_data['Patient ID'].isin(train_patient_ids)]
     val_data = train_val_data[train_val_data['Patient ID'].isin(val_patient_ids)]
 
@@ -164,7 +163,7 @@ if __name__ == '__main__':
     from torchvision.models.resnet import ResNet50_Weights
     from torchvision.models.densenet import DenseNet, densenet121, DenseNet121_Weights
 
-    set_params = {'lr': 0.00013334120505282098, 'batch_size': 98, 'grad_clip': 0.47836246526814713, 'scheduler_name': 'CosineAnnealingLR', 'weight_decay': 1.8857522141696178e-06}
+    set_params = {'lr': 0.00023482487485532925, 'batch_size': 42, 'grad_clip': 0.9708376786312394, 'scheduler_name': 'CosineAnnealingLR', 'weight_decay': 1.3256975652620102e-05}
     
     
     lr = set_params['lr']
@@ -176,15 +175,13 @@ if __name__ == '__main__':
   
 
 
-    train_transform = transforms.Compose([
-    #transforms.ToPILImage(),
-   # transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
- #   transforms.Resize((224, 224)),
+    train_transform = transforms.Compose([ # mehtod 1
+
     transforms.RandomHorizontalFlip(),
-  #  transforms.RandomVerticalFlip(),
+
     transforms.RandomRotation(7),
     transforms.RandomResizedCrop(
-        size=(224, 224),  # Replace with your desired output dimensions
+        size=(224, 224), 
         scale=(0.08, 1.0),
         ratio=(3/4, 4/3)
     ),
@@ -192,10 +189,18 @@ if __name__ == '__main__':
     transforms.ToTensor(),
     transforms.Normalize(mean, std)
     ])
+
+    train_transform_method2 = transforms.Compose([ # method 2
+    transforms.RandomRotation(15),
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean, std)
+    ])
+
+
     
     val_transform = transforms.Compose([
-        #transforms.ToPILImage(),
-        #transforms.Grayscale(num_output_channels=1),  # Convert to grayscale
         transforms.Resize(256),
         transforms.CenterCrop(224),
         transforms.ToTensor(),
@@ -243,16 +248,16 @@ if __name__ == '__main__':
     Cardiomegaly_results = []
    
 
-    for i in range(1):
+    for i in range(5):
 
 
 
-        model = models.densenet121(weights=DenseNet121_Weights.DEFAULT)
+        model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
 
       
 
-        model.classifier = nn.Sequential(
-            nn.Linear(model.classifier.in_features, 14)
+        model.fc = nn.Sequential(
+            nn.Linear(model.fc.in_features, 14)
     
         )
 
@@ -304,7 +309,7 @@ if __name__ == '__main__':
                 if grad_clip is not None:
                     torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
                 optimizer.step()
-
+              
                 
 
                
