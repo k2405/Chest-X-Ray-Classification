@@ -123,7 +123,7 @@ std = [0.229, 0.224, 0.225]
 
 if __name__ == '__main__':
 
-
+    # load data
     train_val_data = data[data['Image Index'].isin(train_images[0].values)]
     test_data = data[data['Image Index'].isin(test_images[0].values)]
 
@@ -136,7 +136,7 @@ if __name__ == '__main__':
 
     unique_patient_ids = train_val_data['Patient ID'].unique()
 
- 
+    # spit the data into train and validation by patient id
     train_patient_ids, val_patient_ids = train_test_split(
         unique_patient_ids, 
         test_size=0.1, 
@@ -163,7 +163,7 @@ if __name__ == '__main__':
     from torchvision.models.resnet import ResNet50_Weights
     from torchvision.models.densenet import DenseNet, densenet121, DenseNet121_Weights
 
-    set_params = {'lr': 0.00023482487485532925, 'batch_size': 42, 'grad_clip': 0.9708376786312394, 'scheduler_name': 'CosineAnnealingLR', 'weight_decay': 1.3256975652620102e-05}
+    set_params = {'lr': 0.00013334120505282098, 'batch_size': 98, 'grad_clip': 0.47836246526814713, 'scheduler_name': 'CosineAnnealingLR', 'weight_decay': 1.8857522141696178e-06}
     
     
     lr = set_params['lr']
@@ -252,12 +252,12 @@ if __name__ == '__main__':
 
 
 
-        model = models.resnet50(weights=ResNet50_Weights.DEFAULT)
+        model = models.densenet121(weights=DenseNet121_Weights.DEFAULT)
 
       
 
-        model.fc = nn.Sequential(
-            nn.Linear(model.fc.in_features, 14)
+        model.classifier = nn.Sequential(
+            nn.Linear(model.classifier.in_features, 14)
     
         )
 
@@ -268,7 +268,7 @@ if __name__ == '__main__':
         if scheduler_name == 'CosineAnnealingLR':
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=0)
 
-            # train the model
+           
         num_epochs = 20
         train_losses = []
         val_losses = []
@@ -287,6 +287,7 @@ if __name__ == '__main__':
         print(device)
 
         model.to(device)
+         # train the model
         for epoch in range(num_epochs):
             
             train_loss = 0.0
@@ -348,29 +349,11 @@ if __name__ == '__main__':
         model.load_state_dict(torch.load('model.pth', weights_only=False))
 
         model.eval()
-        predictions = []
-        actuals = []
-        with torch.no_grad():
-            for images, labels in val_loader:
-                images, labels = images.to(device), labels.to(device)
-                output = model(images)
-                output = torch.sigmoid(output)
-                output = output.cpu().detach().numpy()
-                predictions.extend(output)
-                actuals.extend(labels.cpu().detach().numpy())
-
-        predictions = np.array(predictions)
-        actuals = np.array(actuals)
-        predictions2 = predictions.copy()
+      
 
         from sklearn.metrics import roc_auc_score
 
-        # calculate the roc auc score for each label
-        roc_auc_scores = []
-        best_thresholds = []
-
-        
-        # test tresholds on test set
+   
         test_predictions = []
         test_actuals = []
         with torch.no_grad():
@@ -389,7 +372,6 @@ if __name__ == '__main__':
         test_roc_auc_scores = []
         for i,j in zip(range(len(all_labels_without_no_finding)),all_labels_without_no_finding):
             test_predictions = test_predictions2.copy()
-          #  test_predictions = np.where(test_predictions > best_thresholds[i], 1, 0)
             roc_auc = roc_auc_score(test_actuals[:, i], test_predictions[:, i])
             test_roc_auc_scores.append([roc_auc, all_labels_without_no_finding[i]])
 
