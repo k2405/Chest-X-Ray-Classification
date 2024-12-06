@@ -2,10 +2,7 @@ GraphTsetlinMachine-master/*
 data/*
 !data/.gitkeep
 
-
-train_cache*/*
-val_cache*/*
-test_cache*/*
+results/*
 
 train_transformed**/*
 val_transformed*/*
